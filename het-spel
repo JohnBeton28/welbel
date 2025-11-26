@@ -1,0 +1,289 @@
+<div class="isa-app">
+  <div class="isa-rail-wrap">
+    <div id="isaStories" class="isa-stories"></div>
+  </div>
+  <div class="isa-board">
+    <div class="isa-card">
+      <div class="isa-card-head"><h3>🏆 Team Ranking</h3></div>
+      <div id="lbTeams" class="isa-list"></div>
+    </div>
+    <div class="isa-card">
+      <div class="isa-card-head"><h3>🔥 Top Spelers</h3></div>
+      <div id="lbPlayers" class="isa-list"></div>
+    </div>
+  </div>
+</div>
+
+<div id="isaViewer" class="isa-viewer" aria-hidden="true">
+  <div class="isa-viewer-box" id="viewBox">
+    <button class="isa-close" onclick="closeViewer()">✕</button>
+    <div class="isa-v-header">
+      <img id="vAva" class="isa-v-ava">
+      <div><div id="vName" class="isa-v-name"></div><div id="vTeam" class="isa-v-team"></div></div>
+    </div>
+    <div class="isa-v-content">
+      <div id="vMedia"></div>
+      <div class="tap-zone left" onclick="handleTap('prev', event)"></div>
+      <div class="tap-zone right" onclick="handleTap('next', event)"></div>
+    </div>
+    <div id="vCap" class="isa-v-caption"></div>
+    <div id="vBars" class="isa-v-bars"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+<style>
+/* === DESIGN === */
+:root { --gold: #F2B800; --bg-dark: #190825; --bg-card: #230b33; --text: #ffffff; }
+body, .hl_app, #app, .c-section { 
+    background: linear-gradient(180deg, #190825 0%, #050108 100%) !important; 
+    background-attachment: fixed !important; color: #fff !important; font-family: sans-serif;
+}
+.isa-app { max-width: 1200px; margin: 0 auto; padding: 10px; }
+.isa-rail-wrap { background: linear-gradient(180deg, var(--bg-dark), var(--bg-card)); padding: 15px 0; border-radius: 16px; border-bottom: 2px solid var(--gold); margin-bottom: 20px; overflow: hidden; position: relative; }
+.isa-stories { display: flex; gap: 16px; padding: 0 20px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.isa-stories::-webkit-scrollbar { display: none; }
+.isa-story { flex: 0 0 auto; width: 90px; text-align: center; cursor: pointer; transition: transform 0.1s; }
+.isa-story:active { transform: scale(0.95); }
+.isa-ring-wrap { width: 76px; height: 76px; margin: 0 auto 6px; position: relative; display: grid; place-items: center; }
+.isa-ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--t-color) var(--p), #333 0); -webkit-mask: radial-gradient(farthest-side, transparent 88%, #000 89%); mask: radial-gradient(farthest-side, transparent 88%, #000 89%); }
+.isa-story-ava { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; border: 2px solid var(--bg-dark); background: #333; }
+.isa-badge { position: absolute; bottom: 0; right: 0; background: var(--gold); color: #000; font-weight: 800; font-size: 10px; padding: 2px 6px; border-radius: 10px; }
+.isa-s-name { color: #fff; font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.isa-s-team { color: #aaa; font-size: 10px; }
+.isa-board { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+@media(max-width: 768px) { .isa-board { grid-template-columns: 1fr; } }
+.isa-card { background: var(--bg-card); border-radius: 16px; border: 1px solid #444; overflow: hidden; }
+.isa-card-head { background: rgba(255,255,255,0.05); padding: 10px 16px; border-bottom: 1px solid #444; }
+.isa-card-head h3 { margin: 0; color: var(--gold); font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
+.isa-list { padding: 5px 0; }
+.isa-row { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 12px; }
+.isa-rank { width: 20px; text-align: center; color: #666; font-weight: 800; font-size: 14px; }
+.isa-rank.top { color: #fff; text-shadow: 0 0 8px var(--gold); }
+.isa-mini-ava { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #555; }
+.isa-info { flex: 1; overflow: hidden; }
+.isa-l-name { color: #fff; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.isa-l-sub { color: #888; font-size: 11px; }
+.isa-score { color: #F2B800; font-weight: 800; font-size: 13px; }
+.isa-bar-bg { flex: 1; height: 6px; background: #333; border-radius: 3px; margin: 0 10px; overflow: hidden; }
+.isa-bar-fill { height: 100%; background: #F2B800; }
+.isa-viewer { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; place-items: center; }
+.isa-viewer[aria-hidden="false"] { display: grid; }
+.isa-viewer-box { width: 100%; height: 100%; background: #000; position: relative; display: flex; flex-direction: column; }
+@media(min-width: 769px) { .isa-viewer-box { max-width: 420px; max-height: 85vh; border-radius: 16px; border: 1px solid #333; overflow: hidden; } }
+.isa-close { position: absolute; top: 20px; right: 20px; width: 36px; height: 36px; border-radius: 50%; background: rgba(0,0,0,0.4); color: #fff; border: 1px solid rgba(255,255,255,0.3); font-size: 20px; cursor: pointer; z-index: 20; display: grid; place-items: center; }
+.isa-v-header { position: absolute; top: 20px; left: 20px; z-index: 10; display: flex; align-items: center; gap: 10px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+.isa-v-ava { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #F2B800; object-fit: cover; }
+.isa-v-name { color: #fff; font-weight: 700; font-size: 14px; }
+.isa-v-team { color: #F2B800; font-size: 11px; font-weight: 600; }
+.isa-v-content { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; background: #000; overflow: hidden; }
+#vMedia img, #vMedia video { width: 100%; height: 100%; object-fit: contain; }
+.tap-zone { position: absolute; top: 0; bottom: 0; z-index: 5; }
+.tap-zone.left { left: 0; width: 35%; }
+.tap-zone.right { right: 0; width: 65%; }
+.isa-v-caption { position: absolute; bottom: 40px; left: 0; right: 0; text-align: center; color: #fff; padding: 15px 20px; background: linear-gradient(0deg, rgba(0,0,0,0.9), transparent); font-size: 15px; font-weight: 500; }
+.isa-v-bars { position: absolute; top: 8px; left: 5px; right: 5px; display: flex; gap: 4px; z-index: 10; }
+.isa-v-bars span { flex: 1; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; }
+.isa-v-bars span.active { background: #fff; }
+/* GOUDEN KNOP */
+.form-builder--main button[type="submit"], .ghl-button, button.hl-btn {
+    background: linear-gradient(135deg, #F2B800 0%, #ff9000 100%) !important;
+    border: 2px solid #fff !important; color: #fff !important;
+    font-family: sans-serif !important; font-weight: 900 !important;
+    font-size: 18px !important; text-transform: uppercase !important;
+    letter-spacing: 1px !important; padding: 20px 40px !important;
+    border-radius: 50px !important; box-shadow: 0 10px 25px rgba(242, 184, 0, 0.6) !important;
+    transition: all 0.1s ease !important; cursor: pointer !important;
+    width: 100% !important; animation: pulse-gold 2s infinite;
+}
+.form-builder--main button[type="submit"]:active { transform: translateY(2px) scale(0.98) !important; }
+@keyframes pulse-gold { 0% { box-shadow: 0 0 0 0 rgba(242, 184, 0, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(242, 184, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(242, 184, 0, 0); } }
+label, .form-label, .field-label, .hl_form-builder--main label { color: #ffffff !important; }
+/* AUTO-DJ HIDE */
+.form-builder--item:has([data-q="challenge_sociaal"]), [data-q="challenge_sociaal"] { display: none; }
+.form-builder--item:has([data-q="challenge_mentaal"]), [data-q="challenge_mentaal"] { display: none; }
+.form-builder--item:has([data-q="challenge_fysiek"]), [data-q="challenge_fysiek"] { display: none; }
+.form-builder--item:has([data-q="challenge_emotioneel"]), [data-q="challenge_emotioneel"] { display: none; }
+.form-builder--item:has([data-q="challenge_spiritueel"]), [data-q="challenge_spiritueel"] { display: none; }
+</style>
+
+<script>
+/* ==================== 1. FEED ENGINE (HYBRIDE FIX) ==================== */
+const FEED_URL = "https://script.google.com/macros/s/AKfycbzwyO41mCjmtQP859RpSy2Y8WBwOaxhgoGCcoGB6NoWv9rpr3Xk7BOm8R6ihvpQ0ZfO/exec"; 
+const TEAMS = { ZAND:{color:"#F2B800",icon:"🟡"}, BETON:{color:"#9b9b9b",icon:"🧱"}, STEEN:{color:"#b57b4a",icon:"🪨"}, WATER:{color:"#4aa3ff",icon:"💧"}, KABELS:{color:"#b86bff",icon:"⚡"} };
+const PICS = ["https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&q=80"];
+let FEED_DATA = [], CURRENT_USER_IDX = -1, SLIDE_INDEX = 0;
+
+/* Helper: Schakel om naar video als afbeelding faalt */
+window.fixVideo = function(el, url) {
+    const vid = document.createElement('video');
+    vid.src = url;
+    vid.controls = true; vid.autoplay = true; vid.muted = true; vid.playsInline = true;
+    vid.style.width = '100%'; vid.style.height = '100%'; vid.style.objectFit = 'contain';
+    el.parentNode.replaceChild(vid, el);
+};
+
+async function init(){ await loadData(); setInterval(loadData, 15000); }
+async function loadData(){
+  try {
+    const res = await fetch(FEED_URL);
+    const raw = await res.json();
+    if(raw && raw.length > 0) {
+        FEED_DATA = raw.map(u => {
+            if(!u.slides || u.slides.length === 0) u.slides = [{type:'img', url: u.avatar, caption: 'Nieuwe speler!'}];
+            return u;
+        });
+    } else { FEED_DATA = []; }
+    renderRail(); renderLeaderboard(); startDesktopScroll();
+  } catch(e) {}
+}
+
+function renderRail(){
+  const rail = document.getElementById('isaStories');
+  let list = FEED_DATA;
+  if(FEED_DATA.length > 5) list = [...FEED_DATA, ...FEED_DATA];
+  rail.innerHTML = list.map((p, idx) => {
+    const t = TEAMS[p.team] || {color:"#ccc", icon:""};
+    const prog = Math.min(100, p.points);
+    return `<div class="isa-story" onclick="openViewer(${idx % FEED_DATA.length})"><div class="isa-ring-wrap"><div class="isa-ring" style="--t-color:${t.color}; --p:${prog}%"></div><img class="isa-story-ava" src="${p.avatar}" onerror="this.src='${PICS[0]}'"></div><div class="isa-s-name">${p.name}</div></div>`;
+  }).join('');
+}
+
+function renderLeaderboard(){
+  const sc = {ZAND:0,BETON:0,STEEN:0,WATER:0,KABELS:0};
+  FEED_DATA.forEach(p => { if(sc[p.team]!==undefined) sc[p.team]+=Number(p.points||0); });
+  const sortT = Object.keys(sc).map(k=>({k,s:sc[k],...TEAMS[k]})).sort((a,b)=>b.s-a.s);
+  const max = Math.max(1, sortT[0].s);
+  document.getElementById('lbTeams').innerHTML = sortT.map((t,i)=>`<div class="isa-row"><div class="isa-rank ${i<3?'top':''}">${i+1}</div><div class="isa-info"><div class="isa-l-name">${t.icon} ${t.k}</div></div><div class="isa-bar-bg"><div class="isa-bar-fill" style="width:${(t.s/max)*100}%"></div></div><div class="isa-score">${t.s}</div></div>`).join('');
+  const top = [...FEED_DATA].sort((a,b)=>b.points-a.points).slice(0,5);
+  document.getElementById('lbPlayers').innerHTML = top.map((p,i)=>`<div class="isa-row" onclick="openViewerByID('${p.id}')"><div class="isa-rank ${i<3?'top':''}">${i+1}</div><img class="isa-mini-ava" src="${p.avatar||PICS[0]}"><div class="isa-info"><div class="isa-l-name">${p.name}</div><div class="isa-l-sub">${p.team}</div></div><div class="isa-score">${p.points}</div></div>`).join('');
+}
+function openViewer(idx){ if(idx < 0 || idx >= FEED_DATA.length) return; CURRENT_USER_IDX = idx; SLIDE_INDEX = 0; updateViewer(); document.getElementById('isaViewer').setAttribute('aria-hidden', 'false'); stopDesktopScroll(); }
+function openViewerByID(id){ const idx = FEED_DATA.findIndex(p => p.id == id); if(idx !== -1) openViewer(idx); }
+
+function updateViewer(){
+  const user = FEED_DATA[CURRENT_USER_IDX];
+  if(!user) return closeViewer();
+  const s = user.slides[SLIDE_INDEX];
+  const t = TEAMS[user.team] || {icon:""};
+  document.getElementById('vAva').src = user.avatar || PICS[0];
+  document.getElementById('vName').innerText = user.name;
+  document.getElementById('vTeam').innerText = `${t.icon} ${user.team}`;
+  
+  // DE HYBRIDE TRUC: Probeer als IMG, als faalt (onerror) -> Video
+  const mediaDiv = document.getElementById('vMedia');
+  mediaDiv.innerHTML = `<img src="${s.url}" style="width:100%; height:100%; object-fit:contain;" onerror="window.fixVideo(this, '${s.url}')">`;
+  
+  document.getElementById('vCap').innerText = s.caption || "";
+  document.getElementById('vBars').innerHTML = user.slides.map((_,i)=> `<span class="${i===SLIDE_INDEX?'active':''}"></span>`).join('');
+}
+
+function handleTap(action, e){ e.stopPropagation(); const user = FEED_DATA[CURRENT_USER_IDX]; if(!user) return; if(action === 'next'){ if(SLIDE_INDEX < user.slides.length - 1){ SLIDE_INDEX++; updateViewer(); } else { closeViewer(); } } else if(action === 'prev'){ if(SLIDE_INDEX > 0){ SLIDE_INDEX--; updateViewer(); } else { prevUser(); } } }
+function nextUser(){ if(CURRENT_USER_IDX < FEED_DATA.length - 1){ CURRENT_USER_IDX++; SLIDE_INDEX = 0; updateViewer(); } else { closeViewer(); } }
+function prevUser(){ if(CURRENT_USER_IDX > 0){ CURRENT_USER_IDX--; SLIDE_INDEX = 0; updateViewer(); } }
+let touchStartX = 0;
+const box = document.getElementById('viewBox');
+box.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+box.addEventListener('touchend', e => { const diffX = e.changedTouches[0].screenX - touchStartX; if(Math.abs(diffX) > 50){ if(diffX < 0) nextUser(); else prevUser(); } }, {passive: true});
+function closeViewer(){ document.getElementById('isaViewer').setAttribute('aria-hidden', 'true'); document.querySelector('video')?.pause(); startDesktopScroll(); }
+function startDesktopScroll(){ if(window.innerWidth < 800) return; const rail = document.getElementById('isaStories'); clearInterval(scrollInterval); scrollInterval = setInterval(()=>{ rail.scrollLeft += 0.6; if(rail.scrollLeft >= rail.scrollWidth/2) rail.scrollLeft = 0; }, 20); rail.onmouseenter = () => clearInterval(scrollInterval); rail.onmouseleave = startDesktopScroll; }
+function stopDesktopScroll(){ clearInterval(scrollInterval); }
+init();
+</script>
+
+<script>
+document.addEventListener('click', function(e) {
+    const target = e.target;
+    const submitButton = target.closest('button[type="submit"]') || target.closest('.ghl-button');
+    if (submitButton) {
+        var duration = 3000; var end = Date.now() + duration;
+        (function frame() {
+            confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#F2B800', '#ffffff', '#9b9b9b'] });
+            confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#F2B800', '#ffffff', '#4aa3ff'] });
+            if (Date.now() < end) { requestAnimationFrame(frame); }
+        }());
+    }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function(){
+    function findFields(form) {
+        return {
+            name: form.querySelector('input[name*="name"], input[name*="naam"], input[placeholder*="Naam"], input[placeholder*="naam"]'),
+            phone: form.querySelector('input[type="tel"], input[name*="phone"], input[placeholder*="06"], input[placeholder*="Mobiel"]')
+        };
+    }
+    document.querySelectorAll('form').forEach(form => {
+      form.addEventListener('submit', function(){
+        const f = findFields(form);
+        if(f.name && f.phone) localStorage.setItem('welbel_user', JSON.stringify({ name: f.name.value, phone: f.phone.value }));
+      });
+    });
+    const saved = localStorage.getItem('welbel_user');
+    if(saved) {
+      const u = JSON.parse(saved);
+      document.querySelectorAll('form').forEach(form => {
+         const f = findFields(form);
+         if(f.name && f.name.value === "") { f.name.value = u.name; f.name.dispatchEvent(new Event('input', { bubbles: true })); f.name.closest('.form-builder--item').style.display = 'none'; }
+         if(f.phone && f.phone.value === "") { f.phone.value = u.phone; f.phone.dispatchEvent(new Event('input', { bubbles: true })); f.phone.closest('.form-builder--item').style.display = 'none'; }
+      });
+    }
+  }, 1000);
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function(){
+    const uploads = document.querySelectorAll('input[type="file"]');
+    uploads.forEach(input => { input.setAttribute('accept', 'image/*,video/*'); input.setAttribute('capture', 'environment'); });
+  }, 1500);
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const schedule = [
+    { id: 'challenge_sociaal',    startH: 8,  startM: 30,  endH: 9,  endM: 30 },
+    { id: 'challenge_mentaal',    startH: 9,  startM: 30,  endH: 10, endM: 30 },
+    { id: 'challenge_fysiek',     startH: 10, startM: 30,  endH: 11, endM: 30 },
+    { id: 'challenge_emotioneel', startH: 11, startM: 30,  endH: 12, endM: 30 },
+    { id: 'challenge_spiritueel', startH: 13, startM: 15,  endH: 14, endM: 15 }
+  ];
+  function checkTime() {
+    const now = new Date(); const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    schedule.forEach(item => {
+      const startTotal = item.startH * 60 + item.startM;
+      const endTotal = item.endH * 60 + item.endM;
+      const fields = document.querySelectorAll(`[name="${item.id}"], [data-q="${item.id}"]`);
+      fields.forEach(field => {
+        const container = field.closest('.form-builder--item');
+        if(container){
+          if (currentMinutes >= startTotal && currentMinutes < endTotal) container.style.setProperty('display', 'block', 'important');
+          else container.style.setProperty('display', 'none', 'important');
+        }
+      });
+    });
+  }
+  setInterval(checkTime, 5000); setTimeout(checkTime, 1500);
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href').substring(1);
+            const targetElement = document.getElementById(targetId);
+            if (targetElement) {
+                const offsetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset - 20;
+                window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+            }
+        });
+    });
+});
+</script> 
